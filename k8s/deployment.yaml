@@ -1,0 +1,34 @@
+apiVersion: apps/v1 # Versão da API do K8S, pega com kubectl api-resources, como estou criando um deployment para gerenciar todo mundo, uso a versão do deployment
+kind: Deployment # Tipo do objeto que quero criar
+metadata: # Metadados como nome, tag, etc...
+  name: conversao-distancia
+spec: # Aqui é onde vai a especificação de tudo que precisa para executar este projeto
+  replicas: 3 #numero de replicas que devem existir (cada vez que eu acessar via service vou cair em uma por causa do load balancer)
+  selector: # O seletor é usado para dar match com os objetos que tenham o mesmo label
+    matchLabels: # Aqui eu especifico quais labels devem ser usados para este deployment
+      app: conversao-distancia
+  template: # Aqui é onde começamos a especificar o template de cada um dos PODs, são esses PODs que são escalados com o tempo
+    metadata: # Não setamos um nome para este pod, pq a ideia é que ele seja apagado e recriado o tempo todo
+      labels: # Esse label deve dar match com o selector
+        app: conversao-distancia
+    spec: # Aqui entram as especificações de quais containers devem rodar nesse cluster
+      containers:
+        - name: conversao-distancia
+          image: fabricioveronez/conversao-distancia:latest
+          ports: # Declaro as portas que uso neste container
+            - containerPort: 5000
+---
+# Os --- demonstram um separador, esta configuração poderia ficar fora em um outro arquivo
+apiVersion: v1
+kind: Service # Service é o responsavel por criar um ponto unico de comunicação com os pods
+metadata:
+  name: conversao-distancia
+spec:
+  selector: # Aqui o selector seleciona os pods com esta label
+    app: conversao-distancia
+  ports:
+    #- protocol: TCP
+    - port: 80 # Defino a porta que eu quero trabalhar do lado de fora
+      targetPort: 5000 # Defino a porta do meu pod que vai ser exposta
+      nodePort: 30000 # Força o service a usar esta porta para fazermos o bind na hora de criar nosso cluster
+  type: NodePort # Type node port vai expor minha service para o mundo externo
